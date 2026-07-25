@@ -12,15 +12,15 @@ public class DBConnect {
 
     // 1. Read DB_URL from environment; fallback to local MySQL URL
     private static final String DB_URL = System.getenv("DB_URL") != null ?
-            System.getenv("DB_URL") : "jdbc:mysql://mysql-128f00f0-adityaraut1423-cb36.d.aivencloud.com:21832/defaultdb?useSSL=true&trustServerCertificate=true";
+            System.getenv("DB_URL") : "jdbc:mysql://localhost:3306/hms?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
             
-    // 2. Read DB_USER from environment; fallback to Aiven username "avnadmin", then "root"
+    // 2. Read DB_USER from environment; fallback to local "root"
     private static final String DB_USER = System.getenv("DB_USER") != null ?
-            System.getenv("DB_USER") : "avnadmin";
+            System.getenv("DB_USER") : "root";
 
-    // 3. Read DB_PASSWORD (or DB_PASS) from environment; fallback to local default
+    // 3. Read DB_PASSWORD from environment; fallback to local "root"
     private static final String DB_PASS = System.getenv("DB_PASSWORD") != null ?
-            System.getenv("DB_PASSWORD") : (System.getenv("DB_PASS") != null ? System.getenv("DB_PASS") : "AVNS_WGecgMGbYlxtnc4GW3O");
+            System.getenv("DB_PASSWORD") : (System.getenv("DB_PASS") != null ? System.getenv("DB_PASS") : "root");
 
     static {
         try {
@@ -33,7 +33,7 @@ public class DBConnect {
             config.setPassword(DB_PASS);
 
             // Connection Pool Tuning (Optimized for Render Free Tier)
-            config.setMaximumPoolSize(5);           // Cap max connections
+            config.setMaximumPoolSize(5);           // Cap max connections for 512MB RAM
             config.setMinimumIdle(1);               // Keep 1 warm connection
             config.setIdleTimeout(300000);          // Close idle connections after 5 mins
             config.setConnectionTimeout(30000);     // Wait up to 30s to acquire connection
