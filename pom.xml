@@ -10,7 +10,7 @@
     <packaging>war</packaging>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>17</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -46,19 +46,19 @@
         </dependency>
 
         <!-- ========================================== -->
-        <!-- Servlet Container & Web APIs (Tomcat 11)   -->
+        <!-- Servlet Container & Web APIs (Tomcat 10)   -->
         <!-- ========================================== -->
         <dependency>
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
-            <version>6.0.0</version>
+            <version>5.0.0</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>jakarta.servlet.jsp</groupId>
             <artifactId>jakarta.servlet.jsp-api</artifactId>
-            <version>3.1.0</version>
+            <version>3.0.0</version>
             <scope>provided</scope>
         </dependency>
 
