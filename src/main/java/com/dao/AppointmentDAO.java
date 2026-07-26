@@ -17,17 +17,30 @@ public class AppointmentDAO {
         this.conn = conn;
     }
 
+    // Helper method to ensure a valid, non-null database connection
+    private Connection getConnection() throws SQLException {
+        if (this.conn == null || this.conn.isClosed()) {
+            this.conn = DBConnect.getConn();
+        }
+        return this.conn;
+    }
+
     // ✅ Add appointment
     public boolean addAppointment(Appointment a) {
         String sql = "INSERT INTO appointment(patient_id, patient_name, doctor_id, appointment_date, status) VALUES(?,?,?,?,?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, a.getPatientId());
-            ps.setString(2, a.getPatientName());
-            ps.setInt(3, a.getDoctorId());
-            ps.setString(4, a.getDate());
-            ps.setString(5, a.getStatus() != null ? a.getStatus() : "Pending");
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return false;
 
-            return ps.executeUpdate() == 1;
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setInt(1, a.getPatientId());
+                ps.setString(2, a.getPatientName());
+                ps.setInt(3, a.getDoctorId());
+                ps.setString(4, a.getDate());
+                ps.setString(5, a.getStatus() != null ? a.getStatus() : "Pending");
+
+                return ps.executeUpdate() == 1;
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -39,12 +52,20 @@ public class AppointmentDAO {
         List<Appointment> list = new ArrayList<>();
         String sql = "SELECT * FROM appointment ORDER BY id DESC";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) {
+                System.err.println("❌ Database connection is null in AppointmentDAO.getAllAppointments()");
+                return list;
+            }
 
-            while (rs.next()) {
-                Appointment a = mapResultSetToAppointment(rs);
-                list.add(a);
+            try (PreparedStatement ps = activeConn.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+
+                while (rs.next()) {
+                    Appointment a = mapResultSetToAppointment(rs);
+                    list.add(a);
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -64,19 +85,24 @@ public class AppointmentDAO {
                      "LEFT JOIN doctor d ON a.doctor_id = d.id " +
                      "ORDER BY a.id DESC";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return list;
 
-            while (rs.next()) {
-                Appointment a = new Appointment();
-                a.setId(rs.getInt("id"));
-                a.setPatientId(rs.getInt("patient_id"));
-                a.setDoctorId(rs.getInt("doctor_id"));
-                a.setDate(rs.getString("appointment_date"));
-                a.setStatus(rs.getString("status"));
-                a.setPatientName(rs.getString("patientName"));
-                a.setDoctorName(rs.getString("doctorName"));
-                list.add(a);
+            try (PreparedStatement ps = activeConn.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+
+                while (rs.next()) {
+                    Appointment a = new Appointment();
+                    a.setId(rs.getInt("id"));
+                    a.setPatientId(rs.getInt("patient_id"));
+                    a.setDoctorId(rs.getInt("doctor_id"));
+                    a.setDate(rs.getString("appointment_date"));
+                    a.setStatus(rs.getString("status"));
+                    a.setPatientName(rs.getString("patientName"));
+                    a.setDoctorName(rs.getString("doctorName"));
+                    list.add(a);
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -89,12 +115,17 @@ public class AppointmentDAO {
         List<Appointment> list = new ArrayList<>();
         String sql = "SELECT * FROM appointment WHERE appointment_date=?";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, date);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Appointment a = mapResultSetToAppointment(rs);
-                    list.add(a);
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return list;
+
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setString(1, date);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        Appointment a = mapResultSetToAppointment(rs);
+                        list.add(a);
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -106,13 +137,18 @@ public class AppointmentDAO {
     // ✅ Check if doctor is already booked on a given date
     public boolean isDoctorBooked(int doctorId, String date) {
         String sql = "SELECT COUNT(*) FROM appointment WHERE doctor_id=? AND appointment_date=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, doctorId);
-            ps.setString(2, date);
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return false;
 
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setInt(1, doctorId);
+                ps.setString(2, date);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getInt(1) > 0;
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -126,11 +162,16 @@ public class AppointmentDAO {
         Appointment a = null;
         String sql = "SELECT * FROM appointment WHERE id=?";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    a = mapResultSetToAppointment(rs);
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return null;
+
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setInt(1, id);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        a = mapResultSetToAppointment(rs);
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -144,12 +185,17 @@ public class AppointmentDAO {
         List<Appointment> list = new ArrayList<>();
         String sql = "SELECT * FROM appointment WHERE patient_id=? ORDER BY id DESC";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, patientId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Appointment a = mapResultSetToAppointment(rs);
-                    list.add(a);
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return list;
+
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setInt(1, patientId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        Appointment a = mapResultSetToAppointment(rs);
+                        list.add(a);
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -162,10 +208,15 @@ public class AppointmentDAO {
     public boolean updateStatus(int id, String status) {
         String sql = "UPDATE appointment SET status=? WHERE id=?";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, status);
-            ps.setInt(2, id);
-            return ps.executeUpdate() == 1;
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return false;
+
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setString(1, status);
+                ps.setInt(2, id);
+                return ps.executeUpdate() == 1;
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -176,9 +227,14 @@ public class AppointmentDAO {
     public boolean deleteAppointment(int id) {
         String sql = "DELETE FROM appointment WHERE id=?";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            return ps.executeUpdate() == 1;
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return false;
+
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setInt(1, id);
+                return ps.executeUpdate() == 1;
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }

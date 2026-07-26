@@ -11,7 +11,7 @@ public class DBConnect {
 
     private static final String DEFAULT_URL = "jdbc:mysql://mysql-128f00f0-adityaraut1423-cb36.d.aivencloud.com:21832/hms?sslMode=REQUIRED";
     private static final String DEFAULT_USER = "avnadmin";
-    private static final String DEFAULT_PASS = "AVNS_WGecgMGbYlxtnc4GW3O";
+    private static final String DEFAULT_PASS = "AVNS_o_fpmI7xm89qd6DHP8I";
 
     private static synchronized void initPool() {
         if (dataSource != null && !dataSource.isClosed()) {
