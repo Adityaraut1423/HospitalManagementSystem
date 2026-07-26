@@ -17,8 +17,8 @@ RUN rm -rf /usr/local/tomcat/webapps/ROOT /usr/local/tomcat/webapps/ROOT.war
 # Copy compiled WAR file
 COPY --from=builder /app/target/*.war /usr/local/tomcat/webapps/ROOT.war
 
+# Configure Tomcat to bind directly to dynamic PORT environment variable provided by Render
 ENV PORT=8080
 EXPOSE 8080
 
-# Configure Tomcat to bind directly to $PORT without touching server.xml
-CMD ["sh", "-c", "export CATALINA_OPTS=\"-Dport.http=${PORT:-8080}\" && exec catalina.sh run"]
+CMD ["sh", "-c", "sed -i \"s/8080/${PORT}/g\" /usr/local/tomcat/conf/server.xml && exec catalina.sh run"]
