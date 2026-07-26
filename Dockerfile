@@ -17,10 +17,8 @@ RUN rm -rf /usr/local/tomcat/webapps/ROOT /usr/local/tomcat/webapps/ROOT.war
 # Copy compiled WAR file
 COPY --from=builder /app/target/*.war /usr/local/tomcat/webapps/ROOT.war
 
-# Replace HTTP connector port 8080 with Render's ${env.PORT}
-RUN sed -i 's/<Connector port="8080"/<Connector port="${env.PORT}"/g' /usr/local/tomcat/conf/server.xml
-
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["catalina.sh", "run"]
+# Configure Tomcat to bind directly to $PORT without touching server.xml
+CMD ["sh", "-c", "export CATALINA_OPTS=\"-Dport.http=${PORT:-8080}\" && exec catalina.sh run"]
