@@ -23,7 +23,7 @@ public class BillingDAO {
             ps.setInt(1, b.getPatientId());
             ps.setDouble(2, b.getAmount());
             ps.setString(3, b.getDate());
-            ps.setString(4, b.getPatientName());  // <-- set patient_name
+            ps.setString(4, b.getPatientName());
 
             return ps.executeUpdate() == 1;
 
@@ -38,7 +38,7 @@ public class BillingDAO {
         List<Billing> list = new ArrayList<>();
 
         try {
-            String sql = "SELECT * FROM billing";
+            String sql = "SELECT * FROM billing ORDER BY id DESC";
             PreparedStatement ps = conn.prepareStatement(sql);
             ResultSet rs = ps.executeQuery();
 
@@ -46,7 +46,7 @@ public class BillingDAO {
                 Billing b = new Billing();
                 b.setId(rs.getInt("id"));
                 b.setPatientId(rs.getInt("patient_id"));
-                b.setPatientName(rs.getString("patient_name")); // ✅ IMPORTANT
+                b.setPatientName(rs.getString("patient_name"));
                 b.setAmount(rs.getDouble("amount"));
                 b.setDate(rs.getString("bill_date"));
                 list.add(b);
@@ -57,4 +57,8 @@ public class BillingDAO {
         return list;
     }
 
+    // Alias method to ensure compatibility with AdminDashboardServlet
+    public List<Billing> getAllBilling() {
+        return getAllBills();
+    }
 }
