@@ -18,13 +18,11 @@ RUN rm -rf /usr/local/tomcat/webapps/ROOT /usr/local/tomcat/webapps/ROOT.war
 COPY --from=builder /app/target/*.war /usr/local/tomcat/webapps/ROOT.war
 
 # 1. Disable Tomcat shutdown port
-# 2. Update server.xml to use system property ${port} (valid Tomcat property syntax)
+# 2. Hardcode Tomcat's HTTP Connector to port 8080
 RUN sed -i 's/port="8005" shutdown="SHUTDOWN"/port="-1" shutdown="SHUTDOWN"/g' /usr/local/tomcat/conf/server.xml \
-    && sed -i 's/port="8080"/port="${port}"/g' /usr/local/tomcat/conf/server.xml
+    && sed -i 's/port="8080"/port="8080"/g' /usr/local/tomcat/conf/server.xml
 
-# Default port fallback
 ENV PORT=8080
 EXPOSE 8080
 
-# Execute shell command to resolve $PORT at RUNTIME
-CMD ["sh", "-c", "export CATALINA_OPTS=\"-Dport=${PORT:-8080} $CATALINA_OPTS\" && catalina.sh run"]
+CMD ["catalina.sh", "run"]
