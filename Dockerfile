@@ -1,4 +1,4 @@
-# Stage 1: Build application WAR file
+# Stage 1: Build application WAR file using Maven
 FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /app
 
@@ -8,17 +8,21 @@ RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn clean package -DskipTests
 
-# Stage 2: Run Tomcat 10
+# Stage 2: Deploy to Tomcat 10
 FROM tomcat:10.1-jdk17-temurin
 
-# Clean default ROOT application
+# Clean default webapps
 RUN rm -rf /usr/local/tomcat/webapps/ROOT /usr/local/tomcat/webapps/ROOT.war
 
-# Copy compiled WAR file
+# Copy compiled WAR file as ROOT.war
 COPY --from=builder /app/target/*.war /usr/local/tomcat/webapps/ROOT.war
 
-# Configure Tomcat to bind directly to dynamic PORT environment variable provided by Render
+# 1. Completely disable Tomcat shutdown port (sets port="-1" so health checks won't trigger shutdown warnings)
+# 2. Map Tomcat's HTTP Connector port to Render's dynamic ${PORT} environment variable
+RUN sed -i 's/port="8005" shutdown="SHUTDOWN"/port="-1" shutdown="SHUTDOWN"/g' /usr/local/tomcat/conf/server.xml \
+    && sed -i 's/port="8080"/port="${env.PORT}"/g' /usr/local/tomcat/conf/server.xml
+
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["sh", "-c", "sed -i \"s/8080/${PORT}/g\" /usr/local/tomcat/conf/server.xml && exec catalina.sh run"]
+CMD ["catalina.sh", "run"]
