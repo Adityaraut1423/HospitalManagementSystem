@@ -18,17 +18,30 @@ public class PatientDAO {
         this.conn = conn;
     }
 
+    // Helper method to ensure a valid, non-null database connection
+    private Connection getConnection() throws SQLException {
+        if (this.conn == null || this.conn.isClosed()) {
+            this.conn = DBConnect.getConn();
+        }
+        return this.conn;
+    }
+
     // ✅ Add new patient
     public boolean addPatient(Patient p) {
         String sql = "INSERT INTO patient(name, age, gender, phone, address, email) VALUES (?,?,?,?,?,?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, p.getName());
-            ps.setInt(2, p.getAge());
-            ps.setString(3, p.getGender());
-            ps.setString(4, p.getPhone());
-            ps.setString(5, p.getAddress());
-            ps.setString(6, p.getEmail());
-            return ps.executeUpdate() == 1;
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return false;
+
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setString(1, p.getName());
+                ps.setInt(2, p.getAge());
+                ps.setString(3, p.getGender());
+                ps.setString(4, p.getPhone());
+                ps.setString(5, p.getAddress());
+                ps.setString(6, p.getEmail());
+                return ps.executeUpdate() == 1;
+            }
         } catch (SQLException e) {
             System.err.println("Error adding patient: " + e.getMessage());
             e.printStackTrace();
@@ -40,12 +53,20 @@ public class PatientDAO {
     public List<Patient> getAllPatients() {
         List<Patient> list = new ArrayList<>();
         String sql = "SELECT * FROM patient ORDER BY id DESC";
-        try (PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) {
+                System.err.println("❌ Database connection is null in PatientDAO.getAllPatients()");
+                return list;
+            }
 
-            while (rs.next()) {
-                Patient p = mapResultSetToPatient(rs);
-                list.add(p);
+            try (PreparedStatement ps = activeConn.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+
+                while (rs.next()) {
+                    Patient p = mapResultSetToPatient(rs);
+                    list.add(p);
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -57,11 +78,16 @@ public class PatientDAO {
     public Patient getPatientById(int id) {
         Patient p = null;
         String sql = "SELECT * FROM patient WHERE id=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    p = mapResultSetToPatient(rs);
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return null;
+
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setInt(1, id);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        p = mapResultSetToPatient(rs);
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -77,11 +103,16 @@ public class PatientDAO {
         }
         Patient p = null;
         String sql = "SELECT * FROM patient WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, email.trim());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    p = mapResultSetToPatient(rs);
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return null;
+
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setString(1, email.trim());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        p = mapResultSetToPatient(rs);
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -92,31 +123,35 @@ public class PatientDAO {
     }
 
     // ✅ Auto-create patient profile from registered user details
-    // Uses 'N/A' for gender to avoid MySQL VARCHAR truncation exceptions
     public Patient createPatientFromUser(String name, String email, String phone) {
         String safeName = (name != null && !name.trim().isEmpty()) ? name.trim() : "New Patient";
         String safeEmail = (email != null && !email.trim().isEmpty()) ? email.trim() : "no-email@hospital.com";
         String safePhone = (phone != null && !phone.trim().isEmpty()) ? phone.trim() : "0000000000";
 
         String sql = "INSERT INTO patient(name, age, gender, phone, address, email) VALUES(?, 0, 'N/A', ?, 'N/A', ?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, safeName);
-            ps.setString(2, safePhone);
-            ps.setString(3, safeEmail);
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return null;
 
-            int rows = ps.executeUpdate();
-            if (rows > 0) {
-                try (ResultSet rs = ps.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        Patient p = new Patient();
-                        p.setId(rs.getInt(1)); // Retrieves auto-generated ID
-                        p.setName(safeName);
-                        p.setEmail(safeEmail);
-                        p.setPhone(safePhone);
-                        p.setAge(0);
-                        p.setGender("N/A");
-                        p.setAddress("N/A");
-                        return p;
+            try (PreparedStatement ps = activeConn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, safeName);
+                ps.setString(2, safePhone);
+                ps.setString(3, safeEmail);
+
+                int rows = ps.executeUpdate();
+                if (rows > 0) {
+                    try (ResultSet rs = ps.getGeneratedKeys()) {
+                        if (rs.next()) {
+                            Patient p = new Patient();
+                            p.setId(rs.getInt(1)); // Retrieves auto-generated ID
+                            p.setName(safeName);
+                            p.setEmail(safeEmail);
+                            p.setPhone(safePhone);
+                            p.setAge(0);
+                            p.setGender("N/A");
+                            p.setAddress("N/A");
+                            return p;
+                        }
                     }
                 }
             }
@@ -130,15 +165,20 @@ public class PatientDAO {
     // ✅ Update patient
     public boolean updatePatient(Patient p) {
         String sql = "UPDATE patient SET name=?, age=?, gender=?, phone=?, address=?, email=? WHERE id=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, p.getName());
-            ps.setInt(2, p.getAge());
-            ps.setString(3, p.getGender());
-            ps.setString(4, p.getPhone());
-            ps.setString(5, p.getAddress());
-            ps.setString(6, p.getEmail());
-            ps.setInt(7, p.getId());
-            return ps.executeUpdate() == 1;
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return false;
+
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setString(1, p.getName());
+                ps.setInt(2, p.getAge());
+                ps.setString(3, p.getGender());
+                ps.setString(4, p.getPhone());
+                ps.setString(5, p.getAddress());
+                ps.setString(6, p.getEmail());
+                ps.setInt(7, p.getId());
+                return ps.executeUpdate() == 1;
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -148,9 +188,14 @@ public class PatientDAO {
     // ✅ Delete patient
     public boolean deletePatient(int id) {
         String sql = "DELETE FROM patient WHERE id=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            return ps.executeUpdate() == 1;
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return false;
+
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setInt(1, id);
+                return ps.executeUpdate() == 1;
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -161,12 +206,17 @@ public class PatientDAO {
     public List<Patient> searchPatients(String keyword) {
         List<Patient> list = new ArrayList<>();
         String sql = "SELECT * FROM patient WHERE name LIKE ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, "%" + keyword + "%");
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Patient p = mapResultSetToPatient(rs);
-                    list.add(p);
+        try {
+            Connection activeConn = getConnection();
+            if (activeConn == null) return list;
+
+            try (PreparedStatement ps = activeConn.prepareStatement(sql)) {
+                ps.setString(1, "%" + keyword + "%");
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        Patient p = mapResultSetToPatient(rs);
+                        list.add(p);
+                    }
                 }
             }
         } catch (SQLException e) {
